@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Places.Dto;
+using Places.Interfaces;
 using System.Threading.Tasks;
 
 namespace Places.Controllers // Note the corrected namespace
@@ -10,10 +11,12 @@ namespace Places.Controllers // Note the corrected namespace
     public class FriendController : ControllerBase
     {
         private readonly FriendService _friendService;
+        private readonly IUserProfileRepository _userProfileRepository;
 
-        public FriendController(FriendService friendService)
+        public FriendController(FriendService friendService, IUserProfileRepository userProfileRepository)
         {
             _friendService = friendService;
+            _userProfileRepository = userProfileRepository;
         }
 
         [HttpPost("sendFriendRequest")]
@@ -21,7 +24,7 @@ namespace Places.Controllers // Note the corrected namespace
         {
             try
             {
-                await _friendService.SendFriendRequest(request.SenderId, request.ReceiverId);
+                await _friendService.SendFriendRequest(request.SenderId, request.ReceiverId, (float)request.Latitude, (float)request.Longitude);
                 return Ok("Friend request sent successfully.");
             }
             catch (Exception ex)
@@ -36,6 +39,19 @@ namespace Places.Controllers // Note the corrected namespace
             try
             {
                 var requests = await _friendService.GetPendingFriendRequests(userId);
+                return Ok(requests);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+        [HttpGet("acceptedFriendRequests/{userId}")]
+        public async Task<IActionResult> GetAcceptedFriendRequests(int userId)
+        {
+            try
+            {
+                var requests = await _friendService.GetAcceptedFriendRequests(userId);
                 return Ok(requests);
             }
             catch (Exception ex)
@@ -83,6 +99,20 @@ namespace Places.Controllers // Note the corrected namespace
             catch (Exception ex)
             {
                 return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpDelete("{userId1}/{userId2}")]
+        public async Task<IActionResult> DeleteFriend(int userId1, int userId2)
+        {
+            try
+            {
+                await _userProfileRepository.DeleteFriend(userId1, userId2);
+                return NoContent(); 
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 

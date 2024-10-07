@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Azure.Core;
+using Microsoft.EntityFrameworkCore;
 using Places.Data;
 using Places.Dto;
 using Places.Interfaces;
@@ -64,92 +65,146 @@ namespace Places.Repository
         {
             return _context.UserProfile.Any(up => up.PhoneNumber == phoneNumber);
         }
+        public bool CheckEmailNumberExists(string email)
+        {
+            return _context.UserProfile.Any(up => up.Email == email && up.EmailVerified == true);
+        }
 
-        public async Task SendFriendRequest(int senderId, int receiverId)
+        public async Task SendFriendRequest(int senderId, int receiverId, float latitude, float longitude)
         {
 
             var existingRequest = await _context.FriendsRequest
-       .FirstOrDefaultAsync(r => r.SenderId == senderId && r.ReceiverId == receiverId && r.Status == "Pending");
+       .FirstOrDefaultAsync(r => r.SenderId == senderId && r.ReceiverId == receiverId || r.SenderId == receiverId && r.ReceiverId == senderId);
 
             if (existingRequest != null)
             {
+                existingRequest.ReceiverRequestId = receiverId;
+                existingRequest.Status = "Pending";
 
-                return ;
+                await _context.SaveChangesAsync();
             }
-
-            var friendRequest = new FriendRequest
+            else
             {
-                SenderId = senderId,
-                ReceiverId = receiverId,
-                RequestDate = DateTime.Now,
-                Status = "Pending"
-            };
+                var friendRequest = new FriendRequest
+                {
+                    SenderId = senderId,
+                    ReceiverId = receiverId,
+                    Latitude = latitude,
+                    Longitude = longitude,
+                    RequestDate = DateTime.Now,
+                    Status = "Pending"
+                };
 
-            _context.FriendsRequest.Add(friendRequest);
-            await _context.SaveChangesAsync();
+                _context.FriendsRequest.Add(friendRequest);
+                await _context.SaveChangesAsync();
+            } 
         }
 
 
         public async Task<List<FriendRequestDto>> GetPendingFriendRequests(int userId)
         {
+            
+
             var pendingRequests = await _context.FriendsRequest
-                .Where(fr => fr.ReceiverId == userId && fr.Status == "Pending")
+           .Where(fr => fr.ReceiverRequestId == userId && fr.Status == "Pending")
+
                 .Select(fr => new FriendRequestDto
                 {
+                    
                     RequestId = fr.Id,
-                    SenderName = fr.Sender.FirstName + " " + fr.Sender.LastName, // Concatenate first and last name
-                    RequestDate = fr.RequestDate,
-                    SenderPicture = fr.Sender.ProfilePicture
-                    // Add any other properties you need from the sender's UserProfile
+                    SenderName = fr.ReceiverId == userId
+    ? fr.Sender.FirstName + " " + fr.Sender.LastName.Substring(0, 1)
+    : fr.Receiver.FirstName + " " + fr.Receiver.LastName.Substring(0, 1),
+            RequestDate = fr.RequestDate,
+                    SenderPicture =  fr.ReceiverId == userId
+    ? fr.Sender.ProfilePicture 
+    : fr.Receiver.ProfilePicture,
+                   
                 })
                 .ToListAsync();
 
             return pendingRequests;
         }
+        public async Task<List<object>> GetAcceptedFriendRequests(int userId)
+        {
+            var acceptedRequests = await _context.FriendsRequest
+                .Where(fr => (fr.ReceiverId == userId || fr.SenderId == userId) )
+                .Include(fr => fr.Sender)
+                .Include(fr => fr.Receiver)
+                .Select(fr => new 
+                {
+                    RequestId = fr.Id,
+                    fr.ReceiverId,
+                    OtherPersonId = fr.SenderId == userId ? fr.ReceiverId : fr.SenderId,
+                    SenderName = fr.SenderId == userId
+                        ? fr.Receiver.FirstName + " " + fr.Receiver.LastName.Substring(0, 1)
+                        : fr.Sender.FirstName + " " + fr.Sender.LastName.Substring(0, 1),
+                    fr.RequestDate,
+                    SenderPicture = fr.SenderId == userId ? fr.Receiver.ProfilePicture : fr.Sender.ProfilePicture,
+                     fr.Status,
+                     fr.Latitude,
+                     fr.Longitude,
+                     Profile = fr.SenderId == userId
+                        ? fr.Receiver 
+                        : fr.Sender,
+                })
+                .ToListAsync();
+
+            return acceptedRequests.Cast<object>().ToList();
+        }
 
         public async Task AcceptFriendRequest(int requestId)
         {
-
             try
             {
                 var request = await _context.FriendsRequest.FindAsync(requestId);
                 if (request == null) throw new Exception("Friend request not found.");
 
                 request.Status = "Accepted";
+                request.ReceiverRequestId = 0;
                 await _context.SaveChangesAsync();
 
-                var friend = new Friend
+                var friendRow = await _context.Friends
+                .FirstOrDefaultAsync(f => (f.UserId == request.SenderId && f.FriendId == request.ReceiverId) ||
+                                     (f.UserId == request.ReceiverId && f.FriendId == request.SenderId));
+                if (friendRow != null)
                 {
-                    UserId = request.SenderId, 
-                    FriendId = request.ReceiverId 
-                };
-
-                _context.Friends.Add(friend);
-
-                var friendReverse = new Friend
+                    return;      
+                }
+                else
                 {
-                    UserId = request.ReceiverId,
-                    FriendId = request.SenderId
-                };
+                    var friend = new Friend
+                    {
+                        UserId = request.SenderId,
+                        FriendId = request.ReceiverId
+                    };
+                    _context.Friends.Add(friend);
+                    await _context.SaveChangesAsync();
+                }
 
-                _context.Friends.Add(friend);
+                var friendRequestChat = await _context.Chats
+                    .FirstOrDefaultAsync(f => (f.User1Id == request.SenderId && f.User2Id == request.ReceiverId) ||
+                                              (f.User1Id == request.ReceiverId && f.User2Id == request.SenderId));
 
-                var chat = new Chat
+                if (friendRequestChat != null)
                 {
-                    User1Id = friend.UserId,
-                    User2Id = friend.FriendId
-                };
+                    return;
+                }
+                else
+                {
+                    var chat = new Chat
+                    {
+                        User1Id = request.SenderId,
+                        User2Id = request.ReceiverId
+                    };
+                    _context.Chats.Add(chat);
+                    await _context.SaveChangesAsync();
+                }
 
-                _context.Chats.Add(chat);
-
-                await _context.SaveChangesAsync();
-
-               
                
             }
             catch (Exception e)
-            {
-                
+            {   
                 throw e;
             }
            
@@ -159,8 +214,9 @@ namespace Places.Repository
         {
             var request = await _context.FriendsRequest.FindAsync(requestId);
             if (request == null) throw new Exception("Friend request not found.");
-
             request.Status = "Declined";
+            request.ReceiverRequestId = 0;
+            _context.FriendsRequest.Update(request);
             await _context.SaveChangesAsync();
         }
 
@@ -202,10 +258,50 @@ namespace Places.Repository
             {
                 userProfile.ThemeColor = preferences.ThemeColor;
             }
+            if (preferences.ProfileVisibility != null)
+            {
+                userProfile.ProfileVisibility = preferences.ProfileVisibility;
+            }
 
             return Save(); // You may need to adjust this if your Save method is async
         }
 
+        public async Task<UserDataAwardsDto> CheckUserDataAwards(int userId)
+        {
+            int createdEventsCount = await _context.Events
+           .CountAsync(e => e.CreatedByUserId == userId);
 
+        
+            int participatedEventsCount = await _context.UserProfileEvents
+                .CountAsync(ep => ep.UserProfileId == userId);
+
+         
+            var userDataAwards = new UserDataAwardsDto
+            {
+                CountCreatedEvents = createdEventsCount,
+                CountJoinedEvents = participatedEventsCount
+            };
+
+            return userDataAwards;
+        }
+
+        public async Task DeleteFriend(int userId1, int userId2)
+        {
+            try
+            {
+                var friendRequest = _context.FriendsRequest.FirstOrDefault(f => (f.SenderId == userId1 && f.ReceiverId == userId2) || (f.SenderId == userId2 && f.ReceiverId == userId1));
+                if (friendRequest != null)
+                {
+                    friendRequest.Status = "Deleted";
+                    friendRequest.ReceiverRequestId = 0;
+                    _context.FriendsRequest.Update(friendRequest);
+                }
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+        }
     }
 }

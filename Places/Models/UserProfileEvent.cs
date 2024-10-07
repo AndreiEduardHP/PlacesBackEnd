@@ -10,6 +10,7 @@
         public Event Event { get; set; }
 
         public bool HideUserInParticipantsList { get; set; }
+        public bool? UserChecked { get; set; } 
         public string QRCode { get; set; }
 
     }

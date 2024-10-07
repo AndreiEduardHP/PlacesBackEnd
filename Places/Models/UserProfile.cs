@@ -13,6 +13,9 @@ namespace Places.Models
         public string City { get; set; }
         public string Interest { get; set; }
         public string Country { get; set; }
+        public int? Shares { get; set; }
+        public bool EmailVerified { get; set; }
+        public string Description { get; set; }
 
         public string? NotificationToken { get; set; }  
 
@@ -23,10 +26,15 @@ namespace Places.Models
 
         public int? Credit { get; set; }
 
-        [Column(TypeName = "VARBINARY(MAX)")]
-        public byte[]? ProfilePicture { get; set; }
+        public string? Role { get; set; }
 
-        public int CurrentLocationId { get; set; }
+        public string ProfileVisibility { get; set; }
+
+        [Column(TypeName = "NVARCHAR(MAX)")]
+        public string? ProfilePicture { get; set; }
+
+        public double CurrentLatitude { get; set; }
+        public double CurrentLongitude { get; set; }
 
         [ForeignKey("CurrentLocationId")]
         public Location UserLocation { get; set; }

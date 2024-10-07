@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Places.Data;
 using Places.Dto;
 using Places.Interfaces;
 using Places.Models;
@@ -17,12 +18,14 @@ namespace Places.Controller
         private readonly IEventRepository _eventRepository;
         private readonly ILocationRepository _locationRepository;
         private readonly IMapper _mapper;
+        private readonly PlacesContext _context;
 
-        public EventController(IEventRepository eventRepository, ILocationRepository locationRepository, IMapper mapper)
+        public EventController(IEventRepository eventRepository, ILocationRepository locationRepository, IMapper mapper, PlacesContext context)
         {
             _eventRepository = eventRepository;
             _locationRepository = locationRepository;
             _mapper = mapper;
+            _context = context;
         }
 
         [HttpPut("updateEvent/{eventId}")]
@@ -40,13 +43,40 @@ namespace Places.Controller
             }
 
             eventEntity.EventName = updateEventDto.EventName ?? eventEntity.EventName;
+            eventEntity.EventImage = updateEventDto.EventImage ?? eventEntity.EventImage;
             eventEntity.EventDescription = updateEventDto.EventDescription ?? eventEntity.EventDescription;
+            eventEntity.OtherRelevantInformation = updateEventDto.OtherRelevantInformation ?? eventEntity.OtherRelevantInformation;
             eventEntity.MaxParticipants = updateEventDto.MaxParticipants;
+
             _eventRepository.UpdateEvent(eventEntity);
 
             return NoContent();
         }
-      
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCoordinates(int id, [FromBody] UpdateCoordinatesDto updateCoordinatesDto)
+        {
+            var eventToUpdate = await _context.Events.Include(e => e.EventLocation).FirstOrDefaultAsync(e => e.Id == id);
+            if (eventToUpdate == null)
+            {
+                return NotFound();
+            }
+
+            eventToUpdate.EventLocation.latitude = updateCoordinatesDto.Latitude;
+            eventToUpdate.EventLocation.longitude = updateCoordinatesDto.Longitude;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Coordinates updated successfully" });
+            }
+            catch (Exception ex)
+            {
+             
+                return StatusCode(500, new { message = "Failed to update coordinates" });
+            }
+        }
+    
 
         [HttpGet]
         [ProducesResponseType(200, Type = typeof(IEnumerable<Event>))]
@@ -61,6 +91,24 @@ namespace Places.Controller
                 evt.LocationLatitude = location.latitude;
                 evt.LocationLongitude = location.longitude;
                 evt.EventParticipantsCount = await _eventRepository.GetCurrentParticipantCount(evt.Id);
+            }
+
+            return Ok(eventDtos);
+        }
+
+        [HttpGet("search")]
+        public IActionResult SearchEvents(string query)
+        {
+            var events = _context.Events
+                .Where(e => e.EventName.Contains(query) || e.EventDescription.Contains(query))
+                .ToList();
+            var eventDtos = _mapper.Map<List<EventDto>>(events);
+            foreach (var evt in eventDtos)
+            {
+                var location = _locationRepository.GetLocation(evt.EventLocationId);
+                evt.LocationLatitude = location.latitude;
+                evt.LocationLongitude = location.longitude;
+                
             }
 
             return Ok(eventDtos);
@@ -120,7 +168,59 @@ namespace Places.Controller
                 return StatusCode(500, ModelState);
             }
 
-            return Ok("Successfully created");
+            return Ok(new { EventId = eventMap.Id, Message = "Successfully created" });
         }
+
+
+
+        [HttpPut("deleteEvent/{id}")]
+        public async Task<IActionResult> DeleteEvent(int id)
+        {
+            var eventToUpdate =  _eventRepository.GetEvent(id);
+            if (eventToUpdate == null)
+            {
+                return NotFound();
+            }
+
+            eventToUpdate.IsDeleted = true;
+          
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Event deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+
+                return StatusCode(500, new { message = "Failed to delete event" });
+            }
+        }
+        [HttpPost("{eventId}/AddImages")]
+        public IActionResult AddImagesToEvent(int eventId, [FromBody] List<string> imageUrls)
+        {
+            var eventEntity = _context.Events.Include(e => e.EventAlbumImages).FirstOrDefault(e => e.Id == eventId);
+
+            if (eventEntity == null)
+            {
+                return NotFound();
+            }
+
+            foreach (var imageUrl in imageUrls)
+            {
+                eventEntity.EventAlbumImages.Add(new EventAlbumImage
+                {
+                    ImageUrl = imageUrl,
+                    EventId = eventId
+                });
+            }
+
+            _context.SaveChanges();
+
+            return Ok();
+        }
+
     }
+
+
 }

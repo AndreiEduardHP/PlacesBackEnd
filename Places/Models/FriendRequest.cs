@@ -10,7 +10,7 @@ namespace Places.Models
         
         public int Id { get; set; }
 
-        
+        public int ReceiverRequestId {  get; set; }
         public int SenderId { get; set; }
         public UserProfile Sender { get; set; }
 
@@ -22,5 +22,7 @@ namespace Places.Models
 
         // Status can be "Pending", "Accepted", "Declined"
         public string Status { get; set; } = "Pending";
+        public float Latitude { get; set; }
+        public float Longitude { get; set; }
     }
 }

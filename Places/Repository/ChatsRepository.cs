@@ -10,10 +10,12 @@ namespace Places.Repository
     {
 
         private readonly PlacesContext _context;
+        private readonly IUserProfileRepository _userProfileRepository;
 
-        public ChatsRepository(PlacesContext context)
+        public ChatsRepository(PlacesContext context, IUserProfileRepository userProfileRepository)
         {
             _context = context;
+            _userProfileRepository = userProfileRepository;
         }
 
         public async Task<UserProfileDto> GetUserProfileAsync(int userId)
@@ -30,13 +32,14 @@ namespace Places.Repository
                     Email = u.Email,
                     City = u.City,
                     Interest = u.Interest,
+                    Description = u.Description,
                     NotificationToken=u.NotificationToken,
                     ProfilePicture = u.ProfilePicture
                 })
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<IEnumerable<ChatProfileDto>> GetAllChatsAsync(int userId)
+        public async Task<IEnumerable<ChatProfileDto>> GetAllChatsAsync(int userId,int numberOfMessages)
         {
             // Retrieve all chats where the user is involved
             var userChats = await _context.Chats
@@ -49,29 +52,32 @@ namespace Places.Repository
             foreach (var chat in userChats)
             {
                 int otherUserId = chat.User1Id == userId ? chat.User2Id : chat.User1Id;
+                bool areFriends = await _userProfileRepository.AreFriends(userId, otherUserId);
+                string friendRequestStatus = await _userProfileRepository.GetFriendRequestStatus(userId, otherUserId);
 
-               
-                var userProfile = await GetUserProfileAsync(userId);
+              //  var userProfile = await GetUserProfileAsync(userId);
                 var otherUserProfile = await GetUserProfileAsync(otherUserId);
-                var messages = await _context.Messages
-                       .Where(m => m.ChatId == chat.Id)
-                       .Select(m => new MessageDto
-                       {
-                           Id = m.Id,
-                           Text = m.Text,
-                           SenderId = m.SenderId,
-                           ChatId = m.ChatId,
-                           Timestamp = m.Timestamp
-                       })
-                       .ToListAsync();
 
+             
+
+                var unreadMessagesCount = _context.Messages
+        .Where(m => m.ChatId == chat.Id  && m.SenderId != userId && !m.IsRead)
+        .Count();
+
+              
                
+
+
                 var chatProfile = new ChatProfileDto
                 {
                     ChatId = chat.Id,
-                    CurrentUser = userProfile,
+                 //   CurrentUser = userProfile,
                     SecondUser = otherUserProfile,
-                    Messages = messages
+                 //   Messages = messages,
+                     AreFriends = areFriends,
+                    UnreadMessagesCount = unreadMessagesCount,
+                 
+                    FriendRequestStatus = friendRequestStatus
                 };
 
            
@@ -80,6 +86,39 @@ namespace Places.Repository
 
             return chatProfiles;
         }
+
+
+        public async Task<int> GetNumberOfMessages(int userId)
+        {
+            int unreadMessagesCount = await _context.Messages
+       .Where(m =>
+           (m.Chat.User1Id == userId || m.Chat.User2Id == userId) &&
+           m.SenderId != userId &&
+           !m.IsRead)
+       .CountAsync();
+
+            return unreadMessagesCount;
+        }
+
+
+        public async Task MarkMessagesAsReadAsync(int chatId, int userId)
+        {
+            var messages = _context.Messages
+                .Where(m => m.ChatId == chatId && m.SenderId != userId && !m.IsRead)
+                .ToList();
+
+            foreach (var message in messages)
+            {
+                message.IsRead = true;
+            }
+
+           // var lastReadMessageId = messages.LastOrDefault()?.Id;
+          
+
+            _context.SaveChanges();
+        }
+
+
 
         public async Task<Chat> GetChatByIdAsync(int chatId)
         {
@@ -113,5 +152,38 @@ namespace Places.Repository
         {
             throw new NotImplementedException();
         }
+
+        public async Task<int> GetChatRoom(int user1, int user2)
+        {
+            var chatRoom = await _context.Chats
+                                .FirstOrDefaultAsync(chat =>
+                                    (chat.User1Id == user1 && chat.User2Id == user2) ||
+                                    (chat.User1Id == user2 && chat.User2Id == user1));
+
+            return chatRoom.Id;
+        }
+
+        public async Task<IEnumerable<MessageDto>> GetMessagesByChatId(int chatId, int numberOfMessages)
+        {
+          var messages = await _context.Messages
+                  .Where(m => m.ChatId == chatId)
+                  //  .OrderByDescending(m => m.Timestamp)
+           //    .Take(numberOfMessages)
+             
+              .Select(m => new MessageDto
+                {
+                     Id = m.Id,
+                    Text = m.Text,
+                    SenderId = m.SenderId,
+                     ChatId = m.ChatId,
+                     Timestamp = m.Timestamp
+                  })
+                   .ToListAsync();
+
+
+            return messages;
+        }
+
+
     }
 }

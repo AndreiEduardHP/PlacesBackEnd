@@ -8,7 +8,7 @@ namespace Places.Models
       
         public int Id { get; set; }
 
-        
+      
         public int UserId { get; set; }
         public UserProfile User { get; set; }
 

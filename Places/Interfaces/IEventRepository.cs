@@ -10,6 +10,7 @@ namespace Places.Interfaces
         bool CreateEvent(Event createdEvent);
         bool UpdateEvent(Event updatedEvent);
         bool DeleteEvent(Event deletedEvent);
+        bool AddImagesToEvent(int eventId, List<string> imageUrls);
         bool Save();
         Task<int> GetCurrentParticipantCount(int eventId);
 

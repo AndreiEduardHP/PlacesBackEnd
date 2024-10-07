@@ -1,4 +1,5 @@
 ﻿using static Places.Models.Event;
+using System.Collections.Generic;
 
 namespace Places.Dto
 {
@@ -8,8 +9,11 @@ namespace Places.Dto
         public string EventName { get; set; }
         public string EventDescription { get; set; }
         public string? EventImage { get; set; }
+        public string? OtherRelevantInformation { get; set; }
 
         public string? QRCode { get; set; }
+        public string Interest { get; set; }
+        public bool? CheckFunctionality { get; set; }
 
         public int CreatedByUserId {  get; set; }
         public DateTime EventTime { get; set; }
@@ -20,6 +24,8 @@ namespace Places.Dto
         public double LocationLatitude { get; set; }
         public double LocationLongitude { get; set; }
         public int MaxParticipants { get; set; }
-       
+
+        public ICollection<EventAlbumImageDto> EventAlbumImages { get; set; }
+
     }
 }

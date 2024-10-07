@@ -35,6 +35,30 @@ namespace Places.Repository
             _context.Events.Remove(deletedEvent);
             return Save();
         }
+        public bool AddImagesToEvent(int eventId, List<string> imageUrls)
+        {
+            // Găsește evenimentul existent după ID
+            var existingEvent = _context.Events.Include(e => e.EventAlbumImages).FirstOrDefault(e => e.Id == eventId);
+
+            if (existingEvent == null)
+            {
+                return false;  // Evenimentul nu există
+            }
+
+            // Adaugă fiecare imagine asociată evenimentului
+            foreach (var imageUrl in imageUrls)
+            {
+                var eventImage = new EventAlbumImage
+                {
+                    ImageUrl = imageUrl,
+                    EventId = eventId  // Asociază imaginea cu evenimentul existent
+                };
+                existingEvent.EventAlbumImages.Add(eventImage);  // Adaugă imaginea la lista de imagini a evenimentului
+            }
+
+            // Salvează modificările în baza de date
+            return Save();
+        }
 
         public bool EventExists(int eventId)
         {
@@ -43,13 +67,13 @@ namespace Places.Repository
 
         public Event GetEvent(int eventId)
         {
-            return _context.Events.Where(e => e.Id == eventId).FirstOrDefault();
+            return _context.Events.Where(e => e.Id == eventId).Include(e => e.EventAlbumImages).FirstOrDefault();
         }
 
         public ICollection<Event> GetEvents()
         {
           
-            return _context.Events.ToList();
+            return _context.Events.Where(e => e.IsDeleted != true).Include(e => e.EventAlbumImages).ToList();
         }
 
         public bool Save()

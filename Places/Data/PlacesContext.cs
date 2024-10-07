@@ -21,17 +21,23 @@ namespace Places.Data
         public DbSet<FriendRequest> FriendsRequest { get; set; }
         public DbSet<Friend> Friends { get; set; }
 
-
+        public DbSet<ChatUser> ChatUsers { get; set; }
 
         public DbSet<Chat> Chats { get; set; }
 
         public DbSet<Message> Messages { get; set; }
 
         public DbSet<Feedback> Feedbacks { get; set; }
+        public DbSet<EventAlbumImage> EventAlbumImages { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Event>()
+       .HasMany(e => e.EventAlbumImages)  // Un eveniment are mai multe imagini
+       .WithOne(i => i.Event)        // Fiecare imagine aparține unui singur eveniment
+       .HasForeignKey(i => i.EventId) // Cheia străină în tabelul EventImage este EventId
+       .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<UserProfileEvent>()
         .HasOne(e => e.UserProfile)

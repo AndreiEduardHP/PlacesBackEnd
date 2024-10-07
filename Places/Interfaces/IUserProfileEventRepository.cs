@@ -1,4 +1,5 @@
-﻿using Places.Models;
+﻿using Places.Dto;
+using Places.Models;
 
 namespace Places.Interfaces
 {
@@ -9,9 +10,11 @@ namespace Places.Interfaces
 
         string GetQRCodeForUserEvent(int userId, int eventId);
 
-        (IEnumerable<UserProfile>, int) GetUserProfilesByEventId(int eventId);
+        Task<(IEnumerable<UserProfileWithFriendStatusDto>, int)> GetUserProfilesByEventId(int eventId, int userId);
         bool CheckIfUserJoined(int eventId, int userId);
+        bool ScanQr(int eventId, int userId);
 
         Task<List<Event>> GetJoinedEventsByUserId(int userId);
+        Task<List<Event>> GetMyEventsByUserId(int userId);
     }
 }

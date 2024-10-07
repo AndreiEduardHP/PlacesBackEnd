@@ -6,9 +6,11 @@
         public int ReceiverId { get; set; }
 
         public int RequestId { get; set; }
+        public float? Latitude { get; set; }
+        public float? Longitude { get; set; }
     
         public string? SenderName { get; set; } // Full name of the sender
-        public byte[]? SenderPicture { get; set; }
+        public string? SenderPicture { get; set; }
         public DateTime RequestDate { get; set; } // When the request was sent
         // You can add other properties as needed, like SenderUsername, SenderEmail, etc.
     }

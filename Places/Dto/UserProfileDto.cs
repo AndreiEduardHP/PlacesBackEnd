@@ -11,16 +11,21 @@
         public string? Username { get; set; }
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
+        public int? Shares { get; set; }
 
+        public string? ProfileVisibility { get; set; }
         public string? NotificationToken { get; set; }
-
+        public bool EmailVerified { get; set; }
+        public string Description { get; set; } 
         public string? Country { get; set; }
 
         public int? Credit {  get; set; }
         public string? City { get; set; }
         public string? Interest { get; set; }
-        public byte[]? ProfilePicture { get; set; }
-        public int? CurrentLocationId { get; set; }
+        public string? Role { get; set; }
+        public string? ProfilePicture { get; set; }
+        public double CurrentLatitude { get; set; }
+        public double CurrentLongitude { get; set; }
         public string? FriendRequestStatus { get; set; }
         public bool? AreFriends { get; set; }
     }

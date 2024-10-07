@@ -13,6 +13,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Identity.Web;
 using SignalRChat.Hubs;
 using Stripe;
+using AutoMapper;
+using Places.Helpers;
+using Places.MapperConfig;
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -24,7 +27,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 //builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//   .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+  // .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
 
 // Add services to the container.
@@ -53,6 +56,8 @@ builder.Services.AddCors(policyBuilder =>
     policyBuilder.AddDefaultPolicy(policy =>
         policy.WithOrigins("*").AllowAnyHeader().AllowAnyHeader())
 );
+builder.Services.AddAutoMapper(typeof(EventMapper));
+builder.Services.AddAutoMapper(typeof(EventAlbumImagesMapper));
 
 // Utilizați o cheie secretă sigură
 
@@ -93,3 +98,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+

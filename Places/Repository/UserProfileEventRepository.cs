@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Places.Data;
 using Places.Dto;
 using Places.Interfaces;
@@ -18,7 +19,7 @@ namespace Places.Repository
             try
             {
                 _context.UserProfileEvents.Add(userProfileEvent);
-
+                Console.WriteLine($"UserChecked before SaveChanges: {userProfileEvent.UserChecked}");
                 _context.SaveChanges();
 
                 return _context.UserProfileEvents.Any(
@@ -84,28 +85,106 @@ namespace Places.Repository
         
         bool IUserProfileEventRepository.CheckIfUserJoined(int eventId, int userId)
         {
+
             var userJoined = _context.UserProfileEvents
-                .Any(upe => upe.EventId == eventId && upe.UserProfileId == userId);
+           .Any(upe => upe.EventId == eventId && upe.UserProfileId == userId);
+
+         
+           
+         
 
             return userJoined;
 
         }
 
-        public (IEnumerable<UserProfile>, int) GetUserProfilesByEventId(int eventId)
+
+
+
+
+
+
+        public async Task<(IEnumerable<UserProfileWithFriendStatusDto>, int)> GetUserProfilesByEventId(int eventId, int userId)
         {
             // Fetch the user profiles for users who have joined the specific event.
-            var userProfiles = _context.UserProfileEvents
-                .Where(upe => upe.EventId == eventId && !upe.HideUserInParticipantsList) // Check HideUserInParticipantsList here
+            var userProfiles = await _context.UserProfileEvents
+                .Where(upe => upe.EventId == eventId && !upe.HideUserInParticipantsList)
                 .Select(upe => upe.UserProfile)
-                .ToList();
+                .ToListAsync();
+
+            // Initialize a list to hold UserProfiles along with their friend status
+            var userProfileWithStatuses = new List<UserProfileWithFriendStatusDto>();
+
+            foreach (var userProfile in userProfiles)
+            {
+                // Get the friend request status for the current user and the other user profile
+                var friendStatus = await GetFriendRequestStatus(userId, userProfile.Id);
+
+                // Create a new UserProfileWithFriendStatus object and add it to the list
+                userProfileWithStatuses.Add(new UserProfileWithFriendStatusDto
+                {
+                    UserProfile = userProfile,
+                    FriendStatus = friendStatus
+                });
+            }
 
             // Count the number of users
-            int totalCount = _context.UserProfileEvents
-       .Where(upe => upe.EventId == eventId)
-       .Count();
+            int totalCount = await _context.UserProfileEvents
+                .Where(upe => upe.EventId == eventId)
+                .CountAsync();
 
-            // Return both the list of user profiles and the count
-            return (userProfiles, totalCount);
+            // Return both the list of user profiles with statuses and the count
+            return (userProfileWithStatuses, totalCount);
+        }
+        public async Task<string> GetFriendRequestStatus(int currentUserId, int otherUserId)
+        {
+            var status = await _context.FriendsRequest
+                .Where(fr => (fr.SenderId == currentUserId && fr.ReceiverId == otherUserId) ||
+                             (fr.SenderId == otherUserId && fr.ReceiverId == currentUserId))
+                .Select(fr => fr.Status)
+                .FirstOrDefaultAsync();
+
+            return status;
+        }
+
+        public async Task<List<Event>> GetMyEventsByUserId(int userId)
+        {
+            return await _context.Events
+                                 .Where(upe => upe.CreatedByUserId == userId && upe.IsDeleted != true)
+                                 .Include(upe => upe.EventLocation)
+                              
+
+                                 .ToListAsync();
+        }
+
+        public bool ScanQr(int eventId, int userId)
+        {
+
+            var userJoined = _context.UserProfileEvents
+          .Any(upe => upe.EventId == eventId && upe.UserProfileId == userId);
+
+
+
+
+
+          
+            var eventHasCheckFunctionality = _context.Events
+                                            .Where(e => e.Id == eventId)
+                                            .Select(e => e.CheckFunctionality)
+                                            .FirstOrDefault();
+
+            if (eventHasCheckFunctionality != null)
+            {
+
+                var userEvent = _context.UserProfileEvents
+                    .FirstOrDefault(upe => upe.EventId == eventId && upe.UserProfileId == userId);
+
+                if (userEvent != null)
+                {
+                    userEvent.UserChecked = true;
+                    _context.SaveChanges();
+                }
+            }
+            return userJoined;
         }
     }
 }

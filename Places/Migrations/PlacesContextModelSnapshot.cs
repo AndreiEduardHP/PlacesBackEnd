@@ -41,6 +41,38 @@ namespace Places.Migrations
                     b.ToTable("Chats");
                 });
 
+            modelBuilder.Entity("Places.Models.ChatUser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChatId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastMessage")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("LastReadMessageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChatUsers");
+                });
+
             modelBuilder.Entity("Places.Models.Event", b =>
                 {
                     b.Property<int>("Id")
@@ -48,6 +80,9 @@ namespace Places.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool?>("CheckFunctionality")
+                        .HasColumnType("bit");
 
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
@@ -69,14 +104,46 @@ namespace Places.Migrations
                     b.Property<DateTime>("EventTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Interest")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MaxParticipants")
                         .HasColumnType("int");
+
+                    b.Property<string>("OtherRelevantInformation")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("EventLocationId");
 
                     b.ToTable("Events");
+                });
+
+            modelBuilder.Entity("Places.Models.EventAlbumImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EventId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("VARCHAR(MAX)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId");
+
+                    b.ToTable("EventAlbumImages");
                 });
 
             modelBuilder.Entity("Places.Models.Feedback", b =>
@@ -137,7 +204,16 @@ namespace Places.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<float>("Latitude")
+                        .HasColumnType("real");
+
+                    b.Property<float>("Longitude")
+                        .HasColumnType("real");
+
                     b.Property<int>("ReceiverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceiverRequestId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("RequestDate")
@@ -189,6 +265,9 @@ namespace Places.Migrations
                     b.Property<int>("ChatId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
                     b.Property<int>("SenderId")
                         .HasColumnType("int");
 
@@ -225,15 +304,28 @@ namespace Places.Migrations
                     b.Property<int?>("Credit")
                         .HasColumnType("int");
 
+                    b.Property<double>("CurrentLatitude")
+                        .HasColumnType("float");
+
                     b.Property<int>("CurrentLocationId")
                         .HasColumnType("int");
+
+                    b.Property<double>("CurrentLongitude")
+                        .HasColumnType("float");
 
                     b.Property<DateTime>("DateAccountCreation")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("bit");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -257,8 +349,18 @@ namespace Places.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<byte[]>("ProfilePicture")
-                        .HasColumnType("VARBINARY(MAX)");
+                    b.Property<string>("ProfilePicture")
+                        .HasColumnType("NVARCHAR(MAX)");
+
+                    b.Property<string>("ProfileVisibility")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Shares")
+                        .HasColumnType("int");
 
                     b.Property<string>("ThemeColor")
                         .HasColumnType("nvarchar(max)");
@@ -295,6 +397,9 @@ namespace Places.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool?>("UserChecked")
+                        .HasColumnType("bit");
+
                     b.Property<int>("UserProfileId")
                         .HasColumnType("int");
 
@@ -316,6 +421,17 @@ namespace Places.Migrations
                         .IsRequired();
 
                     b.Navigation("EventLocation");
+                });
+
+            modelBuilder.Entity("Places.Models.EventAlbumImage", b =>
+                {
+                    b.HasOne("Places.Models.Event", "Event")
+                        .WithMany("EventAlbumImages")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
                 });
 
             modelBuilder.Entity("Places.Models.Friend", b =>
@@ -395,6 +511,11 @@ namespace Places.Migrations
                     b.Navigation("Event");
 
                     b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("Places.Models.Event", b =>
+                {
+                    b.Navigation("EventAlbumImages");
                 });
 
             modelBuilder.Entity("Places.Models.UserProfile", b =>

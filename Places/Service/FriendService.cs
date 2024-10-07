@@ -11,14 +11,18 @@ public class FriendService
         _userProfileRepository = userProfileRepository;
     }
 
-    public async Task SendFriendRequest(int senderId, int receiverId)
+    public async Task SendFriendRequest(int senderId, int receiverId, float latitude, float longitude)
     {
-        await _userProfileRepository.SendFriendRequest(senderId, receiverId);
+        await _userProfileRepository.SendFriendRequest(senderId, receiverId, latitude, longitude);
     }
 
     public async Task<List<FriendRequestDto>> GetPendingFriendRequests(int userId)
     {
         return await _userProfileRepository.GetPendingFriendRequests(userId);
+    }
+    public async Task<List<object>> GetAcceptedFriendRequests(int userId)
+    {
+        return await _userProfileRepository.GetAcceptedFriendRequests(userId);
     }
 
     public async Task AcceptFriendRequest(int requestId)
